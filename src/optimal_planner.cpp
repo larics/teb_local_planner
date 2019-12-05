@@ -41,6 +41,8 @@
 #include <memory>
 #include <limits>
 
+double v_x_ex_ = 0.0;
+double omega_ex_ = 0.0;
 
 namespace teb_local_planner
 {
@@ -110,6 +112,7 @@ void TebOptimalPlanner::visualize()
   
   if (cfg_->trajectory.publish_feedback)
     visualization_->publishFeedbackMessage(*this, *obstacles_);
+  ROS_INFO_STREAM("asdfasdf2");
  
 }
 
@@ -1088,7 +1091,85 @@ void TebOptimalPlanner::extractVelocity(const PoseSE2& pose1, const PoseSE2& pos
   
   // rotational velocity
   double orientdiff = g2o::normalize_theta(pose2.theta() - pose1.theta());
-  omega = orientdiff/dt;
+  omega = orientdiff / dt;
+
+  //ROS_INFO_STREAM("testsetset");
+  //vx = 0;
+  //omega = 0;
+}
+
+void TebOptimalPlanner::extractVelocity2(const PoseSE2& pose1, const PoseSE2& pose2, double dt, double& vx, double& vy, double& omega) const
+{
+  if (dt == 0)
+  {
+    vx = 0;
+    vy = 0;
+    omega = 0;
+    return;
+  }
+  
+  Eigen::Vector2d deltaS = pose2.position() - pose1.position();
+  
+  Eigen::Vector2d conf1dir( cos(pose1.theta()), sin(pose1.theta()) );
+  // translational velocity
+  double dir = deltaS.dot(conf1dir);
+  double k_v_x = (double) g2o::sign(dir) * deltaS.norm();
+  vx = k_v_x / dt;
+  vy = 0; 
+  
+  
+  // rotational velocity
+  double k_omega = g2o::normalize_theta(pose2.theta() - pose1.theta());
+  omega = k_omega / dt;
+
+  double t_v_max;
+  if (k_v_x >= 0)
+    t_v_max = k_v_x / cfg_->robot.max_vel_x;
+  if (k_v_x < 0)
+    t_v_max = -k_v_x / cfg_->robot.max_vel_x_backwards;
+    
+  double t_omega_max = g2o::sign(k_omega) * k_omega / cfg_->robot.max_vel_theta;
+
+  //ROS_INFO_STREAM("t_v_max = " << t_v_max);
+  //ROS_INFO_STREAM("t_omega_max = " << t_omega_max);
+
+  //quad jednadba
+  double a = cfg_->robot.acc_lim_x;
+  double b = v_x_ex_;
+  double c = g2o::sign(k_v_x) * k_v_x;
+  double t_lin_acc_max = ( - b + sqrt(b*b - 4 * a * c) ) / (4 * a * c);
+  /*
+  if (4*a*c == 0 || (b*b - 4 * a * c) < 0)
+    t_lin_acc_max = 0.0;
+  */
+  //quad jednadba
+  a = cfg_->robot.acc_lim_theta;
+  b = omega_ex_;
+  c = g2o::sign(k_omega) * k_omega;
+  double t_ang_acc_max = ( - b + sqrt(b*b - 4 * a * c) ) / (4 * a * c);
+  /*
+  if (4*a*c == 0 || (b*b - 4 * a * c) < 0)
+    t_ang_acc_max = 0.0;
+  */
+
+  ROS_INFO_STREAM("t_v_max = " << t_v_max);
+  ROS_INFO_STREAM("t_omega_max = " << t_omega_max);
+  ROS_INFO_STREAM("t_lin_acc_max = " << t_lin_acc_max);
+  ROS_INFO_STREAM("t_ang_acc_max = " << t_ang_acc_max);
+
+  double max_t = 0;
+  if (t_v_max > max_t) max_t = t_v_max;
+  if (t_omega_max > max_t) max_t = t_omega_max;
+
+  vx = k_v_x / max_t;
+  omega = k_omega / max_t;
+
+
+  ROS_INFO_STREAM("vx najnoviji = " << vx);
+  ROS_INFO_STREAM("omega najnoviji = " << omega);
+   //ROS_INFO_STREAM("testsetset");
+  //vx = 0;
+  //omega = 0;
 }
 
 bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega, int look_ahead_poses) const
@@ -1122,7 +1203,14 @@ bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega
   }
 	  
   // Get velocity from the first two configurations
-  extractVelocity(teb_.Pose(0), teb_.Pose(look_ahead_poses), dt, vx, vy, omega);
+  ROS_INFO_STREAM("look_ahead_poses = " << look_ahead_poses);
+  extractVelocity2(teb_.Pose(0), teb_.Pose(look_ahead_poses), dt, vx, vy, omega);
+  //ROS_INFO_STREAM("v_x_ex " << v_x_ex_);
+  v_x_ex_ = vx;
+  omega_ex_ = omega;
+
+  //dt_v_max = k_v / v_max;
+  //asdfasdfasdf hax
   return true;
 }
 
@@ -1186,9 +1274,19 @@ void TebOptimalPlanner::getFullTrajectory(std::vector<TrajectoryPointMsg>& traje
     double vel1_x, vel1_y, vel2_x, vel2_y, omega1, omega2;
     extractVelocity(teb_.Pose(i-1), teb_.Pose(i), teb_.TimeDiff(i-1), vel1_x, vel1_y, omega1);
     extractVelocity(teb_.Pose(i), teb_.Pose(i+1), teb_.TimeDiff(i), vel2_x, vel2_y, omega2);
+    if (i == 1)
+      ROS_INFO_STREAM("vel1 = " << vel1_x);
+    //ROS_INFO_STREAM("vel2 = " << vel2_x);
+    /*
     point.velocity.linear.x = 0.5*(vel1_x+vel2_x);
     point.velocity.linear.y = 0.5*(vel1_y+vel2_y);
-    point.velocity.angular.z = 0.5*(omega1+omega2);    
+    point.velocity.angular.z = 0.5*(omega1+omega2);
+    */
+    point.velocity.linear.x = vel1_x;
+    point.velocity.linear.y = vel1_y;
+    point.velocity.angular.z = omega1;
+
+    //ROS_INFO_STREAM("point.velocity.linear.x = " << point.velocity.linear.x);
     point.time_from_start.fromSec(curr_time);
     
     curr_time += teb_.TimeDiff(i);

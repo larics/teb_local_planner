@@ -97,7 +97,8 @@ public:
    */
   virtual ~TimedElasticBand();
 
-  
+  double v_x_ex_ = 0.0;
+  double omega_ex_ = 0.0;
   
   /** @name Access pose and timediff sequences */
   //@{

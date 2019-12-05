@@ -132,6 +132,21 @@ public:
    * @brief Destruct the optimal planner.
    */
   virtual ~TebOptimalPlanner();
+
+  TimedElasticBand teb_; //!< Actual trajectory object
+  /**
+   * @brief Access the internal TimedElasticBand trajectory.
+   * @warning In general, the underlying teb must not be modified directly. Use with care...
+   * @return reference to the teb
+   */
+  TimedElasticBand& teb() {return teb_;};
+  
+  /**
+   * @brief Access the internal TimedElasticBand trajectory (read-only).
+   * @return const reference to the teb
+   */
+  const TimedElasticBand& teb() const {return teb_;};
+  
   
   /**
     * @brief Initializes the optimal planner
@@ -367,18 +382,6 @@ public:
    */
   static void registerG2OTypes();
   
-  /**
-   * @brief Access the internal TimedElasticBand trajectory.
-   * @warning In general, the underlying teb must not be modified directly. Use with care...
-   * @return reference to the teb
-   */
-  TimedElasticBand& teb() {return teb_;};
-  
-  /**
-   * @brief Access the internal TimedElasticBand trajectory (read-only).
-   * @return const reference to the teb
-   */
-  const TimedElasticBand& teb() const {return teb_;};
   
   /**
    * @brief Access the internal g2o optimizer.
@@ -460,6 +463,7 @@ public:
    * @param[out] omega rotational velocity
    */
   inline void extractVelocity(const PoseSE2& pose1, const PoseSE2& pose2, double dt, double& vx, double& vy, double& omega) const;
+  inline void extractVelocity2(const PoseSE2& pose1, const PoseSE2& pose2, double dt, double& vx, double& vy, double& omega) const;
   
   /**
    * @brief Compute the velocity profile of the trajectory
@@ -701,7 +705,7 @@ protected:
   
   // internal objects (memory management owned)
   TebVisualizationPtr visualization_; //!< Instance of the visualization class
-  TimedElasticBand teb_; //!< Actual trajectory object
+  //TimedElasticBand teb_; //!< Actual trajectory object
   RobotFootprintModelPtr robot_model_; //!< Robot model
   boost::shared_ptr<g2o::SparseOptimizer> optimizer_; //!< g2o optimizer for trajectory optimization
   std::pair<bool, geometry_msgs::Twist> vel_start_; //!< Store the initial velocity at the start pose
