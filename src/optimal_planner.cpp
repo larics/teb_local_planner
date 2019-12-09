@@ -1117,38 +1117,112 @@ void TebOptimalPlanner::extractVelocity2(const PoseSE2& pose1, const PoseSE2& po
   vx = k_v_x / dt;
   vy = 0; 
   
-  
   // rotational velocity
   double k_omega = g2o::normalize_theta(pose2.theta() - pose1.theta());
   omega = k_omega / dt;
 
-  double t_v_max;
-  if (k_v_x >= 0)
-    t_v_max = k_v_x / cfg_->robot.max_vel_x;
-  if (k_v_x < 0)
-    t_v_max = -k_v_x / cfg_->robot.max_vel_x_backwards;
+  //provjeri jel se sve postuje s originalnim dt!!
+  double acc_x = (vx - v_x_ex_) / dt;
+  double acc_omega = (omega - omega_ex_) / dt;
 
-  double t_omega_max = g2o::sign(k_omega) * k_omega / cfg_->robot.max_vel_theta;
+  bool speed_bounds_ok = abs(omega) <= cfg_->robot.max_vel_theta
+                          && vx <= cfg_->robot.max_vel_x 
+                          && vx >= -cfg_->robot.max_vel_x_backwards;
 
-  double max_t = t_v_max;
-  if (t_omega_max > max_t) max_t = t_omega_max;
-  max_t = (t_omega_max > t_v_max) ? t_omega_max : t_v_max;  
+  bool accel_bounds_ok = abs(acc_x) <= cfg_->robot.acc_lim_x 
+                        && abs(acc_omega) <= cfg_->robot.acc_lim_theta;
 
-  double a_lin, b_lin, c_lin, d_lin;
-  double a_ang, b_ang, c_ang, d_ang;
-  double t_lin_acc_max = 0;
-  double t_lin_acc_max_1, t_lin_acc_max_2, t_lin_acc_min_1, t_lin_acc_min_2;
-  double t_ang_acc_max = 0;
-  double t_ang_acc_max_1, t_ang_acc_max_2, t_ang_acc_min_1, t_ang_acc_min_2;
-  a_lin = cfg_->robot.acc_lim_x;
-  b_lin = v_x_ex_;
-  c_lin = - k_v_x;
+  if ( speed_bounds_ok && accel_bounds_ok ) {
+    //ROS_INFO_STREAM("asdfasdfasdfs");
+    return;
+  }  
+  if (!speed_bounds_ok) 
+  {
+    double t_v_max;
+    if (k_v_x >= 0)
+      t_v_max = k_v_x / cfg_->robot.max_vel_x;
+    if (k_v_x < 0)
+      t_v_max = -k_v_x / cfg_->robot.max_vel_x_backwards;
+
+    double t_omega_max = g2o::sign(k_omega) * k_omega / cfg_->robot.max_vel_theta;
+
+    double max_t = (t_omega_max > t_v_max) ? t_omega_max : t_v_max;  
+    dt = max_t;
+    vx = k_v_x / dt;
+    omega = k_omega / dt;
+  }
+
+  acc_x = (vx - v_x_ex_) / dt;
+  acc_omega = (omega - omega_ex_) / dt;
+
+  accel_bounds_ok = abs(acc_x) <= cfg_->robot.acc_lim_x 
+                        && abs(acc_omega) <= cfg_->robot.acc_lim_theta;
+
+  if (!accel_bounds_ok) {
+    //ROS_INFO_STREAM("eeej!!!");
+    if (acc_x > cfg_->robot.acc_lim_x )
+    {
+      acc_x = cfg_->robot.acc_lim_x;
+    }
+    if (acc_x < -cfg_->robot.acc_lim_x) 
+    {
+      acc_x = -cfg_->robot.acc_lim_x;
+    }
+    vx = v_x_ex_ + acc_x * dt;
+    omega = vx * k_omega / k_v_x;
+  }
+
+  acc_x = (vx - v_x_ex_) / dt;
+  acc_omega = (omega - omega_ex_) / dt;
+
+  if (abs(acc_x) > cfg_->robot.acc_lim_x) {
+    ROS_INFO_STREAM("acc_x = " << acc_x);
+    ROS_INFO_STREAM("acc_omega = " << acc_omega);
+  }
+  /*
+  if (!accel_bounds_ok)
+  {
+    if (acc_x > cfg_->robot.acc_lim_x) 
+    {
+      acc_x = cfg_->robot.acc_lim_x;
+      acc_omega = acc_x * k_omega / k_v_x;
+    }
+  }
+  */
+
+  //cfg_->robot.acc_lim_x;
+  
+
+  double a_lin, b_lin, c_lin_max, c_lin_min;
+
+  a_lin = 1;
+  b_lin = - v_x_ex_;
+  c_lin_max = - k_v_x * cfg_->robot.acc_lim_x;
+  c_lin_min = k_v_x * cfg_->robot.acc_lim_x;
+  
+  double v_acc_max_1, v_acc_max_2;
+  double v_acc_min_1, v_acc_min_2;
   //trazi pozitivne akceleracije!
-  t_lin_acc_max_1 = ( - b_lin + sqrt(b_lin * b_lin - 4 * a_lin * c_lin) ) / (2 * a_lin);
-  t_lin_acc_max_2 = ( - b_lin - sqrt(b_lin * b_lin - 4 * a_lin * c_lin) ) / (2 * a_lin);
-  t_lin_acc_min_1 = ( - b_lin + sqrt(b_lin * b_lin + 4 * a_lin * c_lin) ) / (- 2 * a_lin);
-  t_lin_acc_min_2 = ( - b_lin - sqrt(b_lin * b_lin + 4 * a_lin * c_lin) ) / (- 2 * a_lin);
+  v_acc_max_1 = ( - b_lin + sqrt(b_lin * b_lin - 4 * a_lin * c_lin_max) ) / (2 * a_lin);
+  v_acc_max_2 = ( - b_lin - sqrt(b_lin * b_lin - 4 * a_lin * c_lin_max) ) / (2 * a_lin);
 
+  v_acc_min_1 = ( - b_lin + sqrt(b_lin * b_lin - 4 * a_lin * c_lin_min) ) / (2 * a_lin);
+  v_acc_min_2 = ( - b_lin - sqrt(b_lin * b_lin - 4 * a_lin * c_lin_min) ) / (2 * a_lin);
+
+  /*
+  ROS_INFO_STREAM("v_ex = " << v_x_ex_);
+  ROS_INFO_STREAM("k_v_x = " << k_v_x);
+  ROS_INFO_STREAM("v_acc_max_1 = " << g2o::sign(k_v_x) * v_acc_max_1);
+  ROS_INFO_STREAM("v_acc_max_2 = " << g2o::sign(k_v_x) * v_acc_max_2);
+  ROS_INFO_STREAM("v_acc_min_1 = " << g2o::sign(k_v_x) * v_acc_min_1);
+  ROS_INFO_STREAM("v_acc_min_2 = " << g2o::sign(k_v_x) * v_acc_min_2);
+  ROS_INFO_STREAM("\n\n");
+  ROS_INFO_STREAM("test_max_1 = " << (v_acc_max_1 * v_acc_max_1 - v_acc_max_1 * v_x_ex_) / k_v_x);
+  ROS_INFO_STREAM("test_max_1 = " << (v_acc_max_2 * v_acc_max_2 - v_acc_max_2 * v_x_ex_) / k_v_x);
+  ROS_INFO_STREAM("test_max_1 = " << (v_acc_min_1 * v_acc_min_1 - v_acc_min_1 * v_x_ex_) / k_v_x);
+  ROS_INFO_STREAM("test_max_1 = " << (v_acc_min_2 * v_acc_min_2 - v_acc_min_2 * v_x_ex_) / k_v_x);
+  ROS_INFO_STREAM("\n\n\n\n");
+  
   a_ang = cfg_->robot.acc_lim_theta;
   b_ang = //g2o::sign(k_omega) * 
         omega_ex_;
@@ -1158,7 +1232,7 @@ void TebOptimalPlanner::extractVelocity2(const PoseSE2& pose1, const PoseSE2& po
   
   //if (t_lin_acc_max > max_t) max_t = t_lin_acc_max;
   //if (t_ang_acc_max > max_t) max_t = t_ang_acc_max;
-
+  
   vx = k_v_x / max_t;
   omega = k_omega / max_t;
   double acc_x = (vx - v_x_ex_) / max_t;
@@ -1198,7 +1272,7 @@ void TebOptimalPlanner::extractVelocity2(const PoseSE2& pose1, const PoseSE2& po
     ROS_INFO_STREAM("t_ang_acc_max = " << t_ang_acc_max);
     ROS_INFO_STREAM("---------------------------\n\n\n\n");
   }
-  
+  */
    //ROS_INFO_STREAM("testsetset");
   //vx = 0;
   //omega = 0;
@@ -1237,6 +1311,12 @@ bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega
   // Get velocity from the first two configurations
   //ROS_INFO_STREAM("look_ahead_poses = " << look_ahead_poses);
   extractVelocity2(teb_.Pose(0), teb_.Pose(look_ahead_poses), dt, vx, vy, omega);
+
+  //ROS_INFO_STREAM("kolko poza? " << teb_.sizePoses());
+  //ROS_INFO_STREAM("kolko time diffova? " << teb_.timediffs().size());
+  for (int i = 0; i < teb_.sizePoses(); i++) {
+    //ROS_INFO_STREAM("time diff (" << i << ") " << );
+  }
   //ROS_INFO_STREAM("v_x_ex " << v_x_ex_);
   v_x_ex_ = vx;
   omega_ex_ = omega;
