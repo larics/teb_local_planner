@@ -112,7 +112,7 @@ void TebOptimalPlanner::visualize()
   
   if (cfg_->trajectory.publish_feedback)
     visualization_->publishFeedbackMessage(*this, *obstacles_);
-  ROS_INFO_STREAM("asdfasdf2");
+  //ROS_INFO_STREAM("asdfasdf2");
  
 }
 
@@ -1127,46 +1127,65 @@ void TebOptimalPlanner::extractVelocity2(const PoseSE2& pose1, const PoseSE2& po
     t_v_max = k_v_x / cfg_->robot.max_vel_x;
   if (k_v_x < 0)
     t_v_max = -k_v_x / cfg_->robot.max_vel_x_backwards;
-    
+
   double t_omega_max = g2o::sign(k_omega) * k_omega / cfg_->robot.max_vel_theta;
 
-  //ROS_INFO_STREAM("t_v_max = " << t_v_max);
-  //ROS_INFO_STREAM("t_omega_max = " << t_omega_max);
+  double a, b, c, d;
+  double t_lin_acc_max = 0;
+  double t_ang_acc_max = 0;
+  a = cfg_->robot.acc_lim_x;
+  b = //g2o::sign(k_v_x) * 
+        v_x_ex_;
+  c = - g2o::sign(k_v_x) * k_v_x;
+  t_lin_acc_max = ( - b + sqrt(b*b - 4 * a * c) ) / (2 * a);
 
-  //quad jednadba
-  double a = cfg_->robot.acc_lim_x;
-  double b = v_x_ex_;
-  double c = g2o::sign(k_v_x) * k_v_x;
-  double t_lin_acc_max = ( - b + sqrt(b*b - 4 * a * c) ) / (4 * a * c);
-  /*
-  if (4*a*c == 0 || (b*b - 4 * a * c) < 0)
-    t_lin_acc_max = 0.0;
-  */
-  //quad jednadba
   a = cfg_->robot.acc_lim_theta;
-  b = omega_ex_;
-  c = g2o::sign(k_omega) * k_omega;
-  double t_ang_acc_max = ( - b + sqrt(b*b - 4 * a * c) ) / (4 * a * c);
-  /*
-  if (4*a*c == 0 || (b*b - 4 * a * c) < 0)
-    t_ang_acc_max = 0.0;
-  */
+  b = //g2o::sign(k_omega) * 
+        omega_ex_;
+  c = - g2o::sign(k_omega) * k_omega;
+  t_ang_acc_max = ( - b + sqrt(b*b - 4 * a * c) ) / (2 * a); 
 
-  ROS_INFO_STREAM("t_v_max = " << t_v_max);
-  ROS_INFO_STREAM("t_omega_max = " << t_omega_max);
-  ROS_INFO_STREAM("t_lin_acc_max = " << t_lin_acc_max);
-  ROS_INFO_STREAM("t_ang_acc_max = " << t_ang_acc_max);
-
-  double max_t = 0;
-  if (t_v_max > max_t) max_t = t_v_max;
+  double max_t = t_v_max;
   if (t_omega_max > max_t) max_t = t_omega_max;
+  if (t_lin_acc_max > max_t) max_t = t_lin_acc_max;
+  if (t_ang_acc_max > max_t) max_t = t_ang_acc_max;
 
   vx = k_v_x / max_t;
   omega = k_omega / max_t;
+  double acc_x = (vx - v_x_ex_) / max_t;
+  double acc_omega = (omega - omega_ex_) / max_t;
 
+  if (abs(acc_x) > cfg_->robot.acc_lim_x) {
+    double alternate_t_1 = (  b + sqrt(b*b - 4 * a * c) ) / (2 * a);
+    double alternate_t_2 = ( - b + sqrt(b*b - 4 * a * c) ) / (2 * a);
+    double alternate_t_3 = ( b + sqrt(b*b - 4 * a * c) ) / (-2 * a);
+    double alternate_t_4 = ( -b + sqrt(b*b - 4 * a * c) ) / (-2 * a);
+    double alternate_t_5 = ( b - sqrt(b*b - 4 * a * c) ) / (2 * a);
+    double alternate_t_6 = ( - b - sqrt(b*b - 4 * a * c) ) / (2 * a);
+    double alternate_t_7 = ( b - sqrt(b*b - 4 * a * c) ) / (-2 * a);
+    double alternate_t_8 = ( - b - sqrt(b*b - 4 * a * c) ) / (-2 * a);
+    ROS_INFO_STREAM("D = " << b*b + 4 * a * c);
+    ROS_INFO_STREAM("acc plus = " << (k_v_x / (alternate_t_1) - v_x_ex_) / (alternate_t_1));
+    ROS_INFO_STREAM("acc plus = " << (k_v_x / (alternate_t_2) - v_x_ex_) / (alternate_t_2));
+    ROS_INFO_STREAM("acc plus = " << (k_v_x / (alternate_t_3) - v_x_ex_) / (alternate_t_3));
+    ROS_INFO_STREAM("acc plus = " << (k_v_x / (alternate_t_4) - v_x_ex_) / (alternate_t_4));
+    ROS_INFO_STREAM("acc plus = " << (k_v_x / (alternate_t_5) - v_x_ex_) / (alternate_t_5));
+    ROS_INFO_STREAM("acc plus = " << (k_v_x / (alternate_t_6) - v_x_ex_) / (alternate_t_6));
+    ROS_INFO_STREAM("acc plus = " << (k_v_x / (alternate_t_7) - v_x_ex_) / (alternate_t_7));
+    ROS_INFO_STREAM("acc plus = " << (k_v_x / (alternate_t_8) - v_x_ex_) / (alternate_t_8));
 
-  ROS_INFO_STREAM("vx najnoviji = " << vx);
-  ROS_INFO_STREAM("omega najnoviji = " << omega);
+    ROS_INFO_STREAM("----------results----------");
+    ROS_INFO_STREAM("vx najnoviji = " << vx);
+    ROS_INFO_STREAM("omega najnoviji = " << omega);
+    ROS_INFO_STREAM("lin acc = " << acc_x );
+    ROS_INFO_STREAM("ang acc = " << acc_omega );
+    ROS_INFO_STREAM("---------------------------");
+    ROS_INFO_STREAM("t_v_max = " << t_v_max);
+    ROS_INFO_STREAM("t_omega_max = " << t_omega_max);
+    ROS_INFO_STREAM("t_lin_acc_max = " << t_lin_acc_max );
+    ROS_INFO_STREAM("t_ang_acc_max = " << t_ang_acc_max );
+    ROS_INFO_STREAM("---------------------------\n\n\n\n");
+  }
    //ROS_INFO_STREAM("testsetset");
   //vx = 0;
   //omega = 0;
@@ -1203,7 +1222,7 @@ bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega
   }
 	  
   // Get velocity from the first two configurations
-  ROS_INFO_STREAM("look_ahead_poses = " << look_ahead_poses);
+  //ROS_INFO_STREAM("look_ahead_poses = " << look_ahead_poses);
   extractVelocity2(teb_.Pose(0), teb_.Pose(look_ahead_poses), dt, vx, vy, omega);
   //ROS_INFO_STREAM("v_x_ex " << v_x_ex_);
   v_x_ex_ = vx;
@@ -1274,8 +1293,10 @@ void TebOptimalPlanner::getFullTrajectory(std::vector<TrajectoryPointMsg>& traje
     double vel1_x, vel1_y, vel2_x, vel2_y, omega1, omega2;
     extractVelocity(teb_.Pose(i-1), teb_.Pose(i), teb_.TimeDiff(i-1), vel1_x, vel1_y, omega1);
     extractVelocity(teb_.Pose(i), teb_.Pose(i+1), teb_.TimeDiff(i), vel2_x, vel2_y, omega2);
+    /*
     if (i == 1)
       ROS_INFO_STREAM("vel1 = " << vel1_x);
+    */
     //ROS_INFO_STREAM("vel2 = " << vel2_x);
     /*
     point.velocity.linear.x = 0.5*(vel1_x+vel2_x);

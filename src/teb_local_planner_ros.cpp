@@ -393,7 +393,7 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
     message = "teb_local_planner velocity command invalid";
     return mbf_msgs::ExePathResult::NO_VALID_CMD;
   }
-  ROS_INFO_STREAM("vel_x_before_saturation = " << cmd_vel.twist.linear.x);
+  //ROS_INFO_STREAM("vel_x_before_saturation = " << cmd_vel.twist.linear.x);
   // Saturate velocity, if the optimization results violates the constraints (could be possible due to soft constraints).
 
   /*
@@ -404,7 +404,7 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
   //extractVelocity(teb_.Pose(0), teb_.Pose(1), teb_.TimeDiff(0), cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z);
   //double k_v_x = cmd_vel.twist.linear.x * dt;
 
-  ROS_INFO_STREAM("vel_x_after_saturation = " << cmd_vel.twist.linear.x);
+  //ROS_INFO_STREAM("vel_x_after_saturation = " << cmd_vel.twist.linear.x);
   // convert rot-vel to steering angle if desired (carlike robot).
   // The min_turning_radius is allowed to be slighly smaller since it is a soft-constraint
   // and opposed to the other constraints not affected by penalty_epsilon. The user might add a safety margin to the parameter itself.
