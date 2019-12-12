@@ -73,7 +73,6 @@ TebLocalPlannerROS::TebLocalPlannerROS() : costmap_ros_(NULL), tf_(NULL), costma
 {
 }
 
-
 TebLocalPlannerROS::~TebLocalPlannerROS()
 {
 }
@@ -171,7 +170,8 @@ void TebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, costm
     custom_obst_sub_ = nh.subscribe("obstacles", 1, &TebLocalPlannerROS::customObstacleCB, this);
 
     // setup callback for custom via-points
-    via_points_sub_ = nh.subscribe("via_points", 1, &TebLocalPlannerROS::customViaPointsCB, this);
+    via_points_sub_ = nh.subscribe("via_points", 1, &TebLocalPlannerROS::customViaPointsCB, this);    
+    move_base_goal_sub_ = nh.subscribe("/move_base_simple/goal", 1, &TebLocalPlannerROS::moveBaseGoalCB, this);
     
     // initialize failure detector
     ros::NodeHandle nh_move_base("~");
@@ -237,7 +237,8 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
     message = "teb_local_planner has not been initialized";
     return mbf_msgs::ExePathResult::NOT_INITIALIZED;
   }
-
+  
+  //ROS_INFO_STREAM("ros time now = " << ros::Time::now().toSec());
   static uint32_t seq = 0;
   cmd_vel.header.seq = seq++;
   cmd_vel.header.stamp = ros::Time::now();
@@ -383,7 +384,19 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
   }
 
   // Get the velocity command for this sampling interval
-  if (!planner_->getVelocityCommand(cmd_vel.twist.linear.x, cmd_vel.twist.linear.y, cmd_vel.twist.angular.z, cfg_.trajectory.control_look_ahead_poses))
+  bool planner_result = planner_->getVelocityCommand( cmd_vel.twist.linear.x, 
+                                                      cmd_vel.twist.linear.y, 
+                                                      cmd_vel.twist.angular.z, 
+                                                      cfg_.trajectory.control_look_ahead_poses);
+
+  // Wait for planning!!
+  if ( ros::Time::now().toSec() - goal_recieved_time_ < 3.0 ) {
+    cmd_vel.twist.linear.x = 0.0; 
+    cmd_vel.twist.linear.y = 0.0;
+    cmd_vel.twist.angular.z = 0.0; 
+  }
+  
+  if (!planner_result)
   {
     planner_->clearPlanner();
     ROS_WARN("TebLocalPlannerROS: velocity command invalid. Resetting planner...");
@@ -976,6 +989,11 @@ void TebLocalPlannerROS::customObstacleCB(const costmap_converter::ObstacleArray
 {
   boost::mutex::scoped_lock l(custom_obst_mutex_);
   custom_obstacle_msg_ = *obst_msg;  
+}
+void TebLocalPlannerROS::moveBaseGoalCB(const geometry_msgs::PoseStamped::ConstPtr& move_base_goal_msg)
+{
+  goal_recieved_time_ = ros::Time::now().toSec();
+  ROS_INFO_STREAM("goal recieved at time!! = " << goal_recieved_time_);
 }
 
 void TebLocalPlannerROS::customViaPointsCB(const nav_msgs::Path::ConstPtr& via_points_msg)

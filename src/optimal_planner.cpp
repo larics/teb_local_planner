@@ -37,12 +37,14 @@
  *********************************************************************/
 
 #include <teb_local_planner/optimal_planner.h>
+#include <ros/ros.h>
 #include <map>
 #include <memory>
 #include <limits>
 
 double v_x_ex_ = 0.0;
 double omega_ex_ = 0.0;
+
 
 namespace teb_local_planner
 {
@@ -1169,7 +1171,6 @@ void TebOptimalPlanner::extractVelocity2(const PoseSE2& pose1, const PoseSE2& po
     vx = v_x_ex_ + acc_x * dt;
     omega = vx * k_omega / k_v_x;
   }
-
   acc_x = (vx - v_x_ex_) / dt;
   acc_omega = (omega - omega_ex_) / dt;
 }
@@ -1206,6 +1207,7 @@ bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega
 	  
   // Get velocity from the first two configurations
   //ROS_INFO_STREAM("look_ahead_poses = " << look_ahead_poses);
+
   extractVelocity2(teb_.Pose(0), teb_.Pose(look_ahead_poses), dt, vx, vy, omega);
 
   //ROS_INFO_STREAM("kolko poza? " << teb_.sizePoses());

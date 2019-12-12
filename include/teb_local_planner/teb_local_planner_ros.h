@@ -281,6 +281,9 @@ protected:
     */
   void customViaPointsCB(const nav_msgs::Path::ConstPtr& via_points_msg);
 
+
+  void moveBaseGoalCB(const geometry_msgs::PoseStamped::ConstPtr& move_base_goal_msg);
+
    /**
     * @brief Prune global plan such that already passed poses are cut off
     * 
@@ -420,6 +423,7 @@ private:
   costmap_converter::ObstacleArrayMsg custom_obstacle_msg_; //!< Copy of the most recent obstacle message
 
   ros::Subscriber via_points_sub_; //!< Subscriber for custom via-points received via a Path msg.
+  ros::Subscriber move_base_goal_sub_; //!< Subscriber for move base goal
   bool custom_via_points_active_; //!< Keep track whether valid via-points have been received from via_points_sub_
   boost::mutex via_point_mutex_; //!< Mutex that locks the via_points container (multi-threaded)
 
@@ -439,7 +443,7 @@ private:
   
   std::string global_frame_; //!< The frame in which the controller will run
   std::string robot_base_frame_; //!< Used as the base frame id of the robot
-    
+  double goal_recieved_time_;
   // flags
   bool initialized_; //!< Keeps track about the correct initialization of this class
 

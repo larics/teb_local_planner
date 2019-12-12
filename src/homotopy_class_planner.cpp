@@ -168,6 +168,7 @@ void HomotopyClassPlanner::visualize()
         int best_idx = bestTebIdx();
         if (best_idx>=0)
           visualization_->publishFeedbackMessage(tebs_, (unsigned int) best_idx, *obstacles_);
+        //ROS_INFO_STREAM("asdfasdf1");
       }
     }
   }
