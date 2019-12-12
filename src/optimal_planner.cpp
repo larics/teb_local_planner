@@ -1175,7 +1175,7 @@ void TebOptimalPlanner::extractVelocity2(const PoseSE2& pose1, const PoseSE2& po
   acc_omega = (omega - omega_ex_) / dt;
 }
 
-bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega, int look_ahead_poses) const
+bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega, unsigned int& change_of_direction_num, int look_ahead_poses) const
 {
   if (teb_.sizePoses()<2)
   {
@@ -1206,11 +1206,10 @@ bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega
   }
 	  
   // Get velocity from the first two configurations
-  ROS_INFO_STREAM("look_ahead_poses = " << look_ahead_poses);
 
   extractVelocity2(teb_.Pose(0), teb_.Pose(look_ahead_poses), dt, vx, vy, omega);
   
-  int change_of_direction_num = 0;
+  change_of_direction_num = 0;
   int ex_sign_dir = 1;
   for (int i = 1; i < teb_.sizePoses(); i++) {
 
@@ -1230,7 +1229,7 @@ bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega
     }
     ex_sign_dir = g2o::sign(dir);
   }
-  ROS_INFO_STREAM("change of direction num = " << change_of_direction_num);
+
   v_x_ex_ = vx;
   omega_ex_ = omega;
 

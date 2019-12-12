@@ -384,16 +384,22 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
   }
 
   // Get the velocity command for this sampling interval
+
+  unsigned int change_of_direction_num;
   bool planner_result = planner_->getVelocityCommand( cmd_vel.twist.linear.x, 
                                                       cmd_vel.twist.linear.y, 
                                                       cmd_vel.twist.angular.z, 
+                                                      change_of_direction_num,
                                                       cfg_.trajectory.control_look_ahead_poses);
-
+  //ROS_INFO_STREAM("change of dir num = " << change_of_direction_num);
   // Wait for planning!!
-  if ( ros::Time::now().toSec() - goal_recieved_time_ < 3.0 ) {
-    cmd_vel.twist.linear.x = 0.0; 
+
+  //if (change_of_direction_num > 2)
+
+  if ( ros::Time::now().toSec() - goal_recieved_time_ < 5.0 && change_of_direction_num > 2) {
+    cmd_vel.twist.linear.x = 0.0;
     cmd_vel.twist.linear.y = 0.0;
-    cmd_vel.twist.angular.z = 0.0; 
+    cmd_vel.twist.angular.z = 0.0;
   }
   
   if (!planner_result)

@@ -196,7 +196,7 @@ public:
    * @param[in] look_ahead_poses index of the final pose used to compute the velocity command.
    * @return \c true if command is valid, \c false otherwise
    */
-  virtual bool getVelocityCommand(double& vx, double& vy, double& omega, int look_ahead_poses) const;
+  virtual bool getVelocityCommand(double& vx, double& vy, double& omega, unsigned int& change_of_direction_num, int look_ahead_poses) const;
 
   /**
    * @brief Access current best trajectory candidate (that relates to the "best" homotopy class).
