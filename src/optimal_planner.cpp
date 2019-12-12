@@ -1206,16 +1206,31 @@ bool TebOptimalPlanner::getVelocityCommand(double& vx, double& vy, double& omega
   }
 	  
   // Get velocity from the first two configurations
-  //ROS_INFO_STREAM("look_ahead_poses = " << look_ahead_poses);
+  ROS_INFO_STREAM("look_ahead_poses = " << look_ahead_poses);
 
   extractVelocity2(teb_.Pose(0), teb_.Pose(look_ahead_poses), dt, vx, vy, omega);
+  
+  int change_of_direction_num = 0;
+  int ex_sign_dir = 1;
+  for (int i = 1; i < teb_.sizePoses(); i++) {
 
-  //ROS_INFO_STREAM("kolko poza? " << teb_.sizePoses());
-  //ROS_INFO_STREAM("kolko time diffova? " << teb_.timediffs().size());
-  for (int i = 0; i < teb_.sizePoses(); i++) {
-    //ROS_INFO_STREAM("time diff (" << i << ") " << );
+    PoseSE2 pose1 = teb_.Pose(i-1);
+    PoseSE2 pose2 = teb_.Pose(i);
+
+    Eigen::Vector2d deltaS = pose2.position() - pose1.position();
+    Eigen::Vector2d conf1dir( cos(pose1.theta()), sin(pose1.theta()) );
+    double dir = deltaS.dot(conf1dir);
+
+    if (i > 1) {
+      //ROS_INFO_STREAM("dir1 = " << velocity_direction_vector[i+1] );
+      //ROS_INFO_STREAM("dir2 = " << velocity_direction_vector[i] );
+      if (ex_sign_dir != g2o::sign(dir)) {
+        change_of_direction_num++;
+      }
+    }
+    ex_sign_dir = g2o::sign(dir);
   }
-  //ROS_INFO_STREAM("v_x_ex " << v_x_ex_);
+  ROS_INFO_STREAM("change of direction num = " << change_of_direction_num);
   v_x_ex_ = vx;
   omega_ex_ = omega;
 
