@@ -396,11 +396,30 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
 
   //if (change_of_direction_num > 2)
 
-  if ( ros::Time::now().toSec() - goal_recieved_time_ < 5.0 && change_of_direction_num > 2) {
+  const unsigned int desired_changes_of_direction = 2;
+  const unsigned int acceptable_changes_of_direction = 3;
+  const double waiting_time = 5.0;
+  const double added_time = 1.0;
+  double time_elapsed = ros::Time::now().toSec() - goal_recieved_time_;
+  if ( time_elapsed < waiting_time && change_of_direction_num > desired_changes_of_direction) {
     cmd_vel.twist.linear.x = 0.0;
     cmd_vel.twist.linear.y = 0.0;
     cmd_vel.twist.angular.z = 0.0;
+    std::cout << "trying to reduce number of changes of direction to " << desired_changes_of_direction << "..." << std::endl;
   }
+  if (time_elapsed >= waiting_time && 
+      time_elapsed < waiting_time + added_time && 
+      change_of_direction_num > acceptable_changes_of_direction) {
+        
+    cmd_vel.twist.linear.x = 0.0;
+    cmd_vel.twist.linear.y = 0.0;
+    cmd_vel.twist.angular.z = 0.0;
+
+    planner_->clearPlanner();
+    goal_recieved_time_ = ros::Time::now().toSec();
+    std::cout << "reseting planner, number of changes of direction above " << acceptable_changes_of_direction << "..." << std::endl;
+  }
+
   
   if (!planner_result)
   {
