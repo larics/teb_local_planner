@@ -171,7 +171,7 @@ void TebLocalPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, costm
 
     // setup callback for custom via-points
     via_points_sub_ = nh.subscribe("via_points", 1, &TebLocalPlannerROS::customViaPointsCB, this);    
-    move_base_goal_sub_ = nh.subscribe("/move_base_simple/goal", 1, &TebLocalPlannerROS::moveBaseGoalCB, this);
+    move_base_goal_sub_ = nh.subscribe("/erl_husky/move_base_simple/goal", 1, &TebLocalPlannerROS::moveBaseGoalCB, this);
     
     // initialize failure detector
     ros::NodeHandle nh_move_base("~");
