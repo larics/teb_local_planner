@@ -396,8 +396,8 @@ uint32_t TebLocalPlannerROS::computeVelocityCommands(const geometry_msgs::PoseSt
 
   //if (change_of_direction_num > 2)
 
-  const unsigned int desired_changes_of_direction = 2;
-  const unsigned int acceptable_changes_of_direction = 3;
+  const unsigned int desired_changes_of_direction = 3;
+  const unsigned int acceptable_changes_of_direction = 7;
   const double waiting_time = 5.0;
   const double added_time = 1.0;
   double time_elapsed = ros::Time::now().toSec() - goal_recieved_time_;
